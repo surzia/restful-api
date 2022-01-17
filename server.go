@@ -43,7 +43,7 @@ func (p *PageServer) pageHandler(w http.ResponseWriter, r *http.Request) {
 		} else if r.Method == http.MethodDelete {
 			p.deleteAllPagesHandler(w, r)
 		} else {
-			http.Error(w, fmt.Sprintf("expect method GET, DELETE or POST at /page/, got %v", r.Method), http.StatusMethodNotAllowed)
+			http.Error(w, fmt.Sprintf("expect method GET, DELETE, PUT or POST at /page/, got %v", r.Method), http.StatusMethodNotAllowed)
 			return
 		}
 	} else {

@@ -30,6 +30,17 @@ func NewPageServer() *PageServer {
 	return &PageServer{store: page.New()}
 }
 
+// renderJSON renders 'v' as JSON and writes it as a response into w.
+func renderJSON(w http.ResponseWriter, v interface{}) {
+	js, err := json.Marshal(v)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write(js)
+}
+
 func (p *PageServer) pageHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("handling page at %s\n", r.URL.Path)
 	if r.URL.Path == "/page/" {
@@ -170,13 +181,7 @@ func (p *PageServer) createPageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := p.store.CreatePage(pr.Text, pr.Tags, pr.Due)
-	js, err := json.Marshal(PageResponse{Id: id})
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(js)
+	renderJSON(w, PageResponse{Id: id})
 }
 
 func (p *PageServer) updatePageHandler(w http.ResponseWriter, r *http.Request) {
@@ -202,13 +207,7 @@ func (p *PageServer) updatePageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	upd, err := p.store.UpdatePage(&ret)
-	js, err := json.Marshal(upd)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(js)
+	renderJSON(w, upd)
 }
 
 func (p *PageServer) deletePageHandler(w http.ResponseWriter, r *http.Request, id int) {
@@ -230,25 +229,13 @@ func (p *PageServer) getPageHandler(w http.ResponseWriter, r *http.Request, id i
 		return
 	}
 
-	js, err := json.Marshal(ret)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(js)
+	renderJSON(w, ret)
 }
 
 func (p *PageServer) getAllPagesHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("handling get all pages at %s\n", r.URL.Path)
 	ret := p.store.GetAllPages()
-	js, err := json.Marshal(ret)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(js)
+	renderJSON(w, ret)
 }
 
 func (p *PageServer) deleteAllPagesHandler(w http.ResponseWriter, r *http.Request) {

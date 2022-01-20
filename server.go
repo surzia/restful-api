@@ -102,14 +102,8 @@ func (p *PageServer) tagHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tag := pathParts[1]
-	tasks := p.store.GetPagesByTag(tag)
-	js, err := json.Marshal(tasks)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(js)
+	pages := p.store.GetPagesByTag(tag)
+	renderJSON(w, pages)
 }
 
 func (p *PageServer) dueHandler(w http.ResponseWriter, r *http.Request) {
@@ -149,13 +143,7 @@ func (p *PageServer) dueHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pages := p.store.GetPagesByDueDate(year, time.Month(month), day)
-	js, err := json.Marshal(pages)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(js)
+	renderJSON(w, pages)
 }
 
 func (p *PageServer) createPageHandler(w http.ResponseWriter, r *http.Request) {

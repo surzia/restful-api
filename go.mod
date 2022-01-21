@@ -2,4 +2,4 @@ module restful-api
 
 go 1.16
 
-require github.com/gin-gonic/gin v1.7.7
+require github.com/gorilla/mux v1.8.0

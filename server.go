@@ -1,12 +1,17 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"mime"
 	"net/http"
 	"restful-api/page"
 	"strconv"
+	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gorilla/mux"
 )
 
 type PageServer struct {
@@ -19,99 +24,174 @@ type PageRequest struct {
 	Due  time.Time `json:"due"`
 }
 
+type PageResponse struct {
+	Id int `json:"id"`
+}
+
 func NewPageServer() *PageServer {
 	return &PageServer{store: page.New()}
 }
 
-func (p *PageServer) tagHandler(c *gin.Context) {
-	tag := c.Params.ByName("tag")
-	tasks := p.store.GetPagesByTag(tag)
-	c.JSON(http.StatusOK, tasks)
+// renderJSON renders 'v' as JSON and writes it as a response into w.
+func renderJSON(w http.ResponseWriter, v interface{}) {
+	js, err := json.Marshal(v)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write(js)
 }
 
-func (p *PageServer) dueHandler(c *gin.Context) {
-	badRequestError := func() {
-		c.String(http.StatusBadRequest, "expect /due/<year>/<month>/<day>, got %v", c.FullPath())
+func (p *PageServer) tagHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("handling tags at %s\n", r.URL.Path)
+	// this handler only accept http get
+	if r.Method != http.MethodGet {
+		http.Error(w, fmt.Sprintf("expect method GET /tag/<tag>, got %v", r.Method), http.StatusMethodNotAllowed)
+		return
 	}
 
-	year, err := strconv.Atoi(c.Params.ByName("year"))
-	if err != nil {
+	path := strings.Trim(r.URL.Path, "/")
+	pathParts := strings.Split(path, "/")
+	if len(pathParts) < 2 {
+		http.Error(w, "expect /tag/<tag> path", http.StatusBadRequest)
+		return
+	}
+
+	tag := pathParts[1]
+	pages := p.store.GetPagesByTag(tag)
+	renderJSON(w, pages)
+}
+
+func (p *PageServer) dueHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("handling due at %s\n", r.URL.Path)
+	// this handler only accept http get
+	if r.Method != http.MethodGet {
+		http.Error(w, fmt.Sprintf("expect method GET /due/<date>, got %v", r.Method), http.StatusMethodNotAllowed)
+		return
+	}
+
+	path := strings.Trim(r.URL.Path, "/")
+	pathParts := strings.Split(path, "/")
+
+	// this handler only accept /due/<year>/<month>/<day>
+	badRequestError := func() {
+		http.Error(w, fmt.Sprintf("expect /due/<year>/<month>/<day>, got %v", r.URL.Path), http.StatusBadRequest)
+	}
+	if len(pathParts) != 4 {
 		badRequestError()
 		return
 	}
 
-	month, err := strconv.Atoi(c.Params.ByName("month"))
+	year, err := strconv.Atoi(pathParts[1])
+	if err != nil {
+		badRequestError()
+		return
+	}
+	month, err := strconv.Atoi(pathParts[2])
 	if err != nil || month < int(time.January) || month > int(time.December) {
 		badRequestError()
 		return
 	}
-
-	day, err := strconv.Atoi(c.Params.ByName("day"))
+	day, err := strconv.Atoi(pathParts[3])
 	if err != nil {
 		badRequestError()
 		return
 	}
 
-	tasks := p.store.GetPagesByDueDate(year, time.Month(month), day)
-	c.JSON(http.StatusOK, tasks)
+	pages := p.store.GetPagesByDueDate(year, time.Month(month), day)
+	renderJSON(w, pages)
 }
 
-func (p *PageServer) createPageHandler(c *gin.Context) {
-	var ret PageRequest
-	if err := c.ShouldBindJSON(&ret); err != nil {
-		c.String(http.StatusBadRequest, err.Error())
+func (p *PageServer) createPageHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("handling create page at %s\n", r.URL.Path)
+	// Enforce a JSON Content-Type.
+	contentType := r.Header.Get("Content-Type")
+	mediaType, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if mediaType != "application/json" {
+		http.Error(w, "expect application/json Content-Type", http.StatusUnsupportedMediaType)
+		return
 	}
 
-	id := p.store.CreatePage(ret.Text, ret.Tags, ret.Due)
-	c.JSON(http.StatusOK, gin.H{"Id": id})
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	var pr PageRequest
+	if err := dec.Decode(&pr); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	id := p.store.CreatePage(pr.Text, pr.Tags, pr.Due)
+	renderJSON(w, PageResponse{Id: id})
 }
 
-func (p *PageServer) updatePageHandler(c *gin.Context) {
+func (p *PageServer) updatePageHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("handling update page at %s\n", r.URL.Path)
+	// Enforce a JSON Content-Type.
+	contentType := r.Header.Get("Content-Type")
+	mediaType, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if mediaType != "application/json" {
+		http.Error(w, "expect application/json Content-Type", http.StatusUnsupportedMediaType)
+		return
+	}
+
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
 	var ret page.Page
-	if err := c.ShouldBindJSON(&ret); err != nil {
-		c.String(http.StatusBadRequest, err.Error())
-	}
-
-	_, err := p.store.UpdatePage(&ret)
-	if err != nil {
-		c.String(http.StatusBadRequest, err.Error())
-	}
-	c.JSON(http.StatusOK, gin.H{"msg": "update page succeed!"})
-}
-
-func (p *PageServer) deletePageHandler(c *gin.Context) {
-	id, err := strconv.Atoi(c.Params.ByName("id"))
-	if err != nil {
-		c.String(http.StatusBadRequest, err.Error())
+	if err := dec.Decode(&ret); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err = p.store.DeletePage(id); err != nil {
-		c.String(http.StatusNotFound, err.Error())
-	}
+	upd, err := p.store.UpdatePage(&ret)
+	renderJSON(w, upd)
 }
 
-func (p *PageServer) getPageHandler(c *gin.Context) {
-	id, err := strconv.Atoi(c.Params.ByName("id"))
+func (p *PageServer) deletePageHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("handling delete page at %s\n", r.URL.Path)
+	id, _ := strconv.Atoi(mux.Vars(r)["id"])
+	err := p.store.DeletePage(id)
 	if err != nil {
-		c.String(http.StatusBadRequest, err.Error())
+		http.Error(w, err.Error(), http.StatusNotFound)
+	}
+
+	w.Header().Set("Content-Type", "text/plain")
+	_, _ = w.Write([]byte(fmt.Sprintf("page with id=%d has been deleted.", id)))
+}
+
+func (p *PageServer) getPageHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("handling get page at %s\n", r.URL.Path)
+	// Here and elsewhere, not checking error of Atoi because the router only
+	// matches the [0-9]+ regex.
+	id, _ := strconv.Atoi(mux.Vars(r)["id"])
+	ret, err := p.store.GetPage(id)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
-	task, err := p.store.GetPage(id)
-	if err != nil {
-		c.String(http.StatusNotFound, err.Error())
-		return
-	}
-
-	c.JSON(http.StatusOK, task)
+	renderJSON(w, ret)
 }
 
-func (p *PageServer) getAllPagesHandler(c *gin.Context) {
-	allTasks := p.store.GetAllPages()
-	c.JSON(http.StatusOK, allTasks)
+func (p *PageServer) getAllPagesHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("handling get all pages at %s\n", r.URL.Path)
+	ret := p.store.GetAllPages()
+	renderJSON(w, ret)
 }
 
-func (p *PageServer) deleteAllPagesHandler(*gin.Context) {
+func (p *PageServer) deleteAllPagesHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("handling delete all pages at %s\n", r.URL.Path)
 	_ = p.store.DeleteAllPages()
+
+	w.Header().Set("Content-Type", "text/plain")
+	_, _ = w.Write([]byte("All pages have been deleted."))
 }

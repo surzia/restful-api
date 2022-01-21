@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/gorilla/mux"
 )
 
 type PageServer struct {
@@ -39,51 +41,6 @@ func renderJSON(w http.ResponseWriter, v interface{}) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write(js)
-}
-
-func (p *PageServer) pageHandler(w http.ResponseWriter, r *http.Request) {
-	log.Printf("handling page at %s\n", r.URL.Path)
-	if r.URL.Path == "/page/" {
-		// response for url "/page/"
-		if r.Method == http.MethodPost {
-			p.createPageHandler(w, r)
-		} else if r.Method == http.MethodPut {
-			p.updatePageHandler(w, r)
-		} else if r.Method == http.MethodGet {
-			p.getAllPagesHandler(w, r)
-		} else if r.Method == http.MethodDelete {
-			p.deleteAllPagesHandler(w, r)
-		} else {
-			http.Error(w, fmt.Sprintf("expect method GET, DELETE, PUT or POST at /page/, got %v", r.Method), http.StatusMethodNotAllowed)
-			return
-		}
-	} else {
-		// response for url "/page/<id>"
-		path := strings.Trim(r.URL.Path, "/")
-		pathParts := strings.Split(path, "/")
-
-		// if the url is otherwise
-		if len(pathParts) < 2 {
-			http.Error(w, "expect /page/<id> in page handler", http.StatusBadRequest)
-			return
-		}
-
-		// parse id from url
-		id, err := strconv.Atoi(pathParts[1])
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		if r.Method == http.MethodDelete {
-			p.deletePageHandler(w, r, id)
-		} else if r.Method == http.MethodGet {
-			p.getPageHandler(w, r, id)
-		} else {
-			http.Error(w, fmt.Sprintf("expect method GET or DELETE at /page/<id>, got %v", r.Method), http.StatusMethodNotAllowed)
-			return
-		}
-	}
 }
 
 func (p *PageServer) tagHandler(w http.ResponseWriter, r *http.Request) {
@@ -198,8 +155,9 @@ func (p *PageServer) updatePageHandler(w http.ResponseWriter, r *http.Request) {
 	renderJSON(w, upd)
 }
 
-func (p *PageServer) deletePageHandler(w http.ResponseWriter, r *http.Request, id int) {
+func (p *PageServer) deletePageHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("handling delete page at %s\n", r.URL.Path)
+	id, _ := strconv.Atoi(mux.Vars(r)["id"])
 	err := p.store.DeletePage(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
@@ -209,9 +167,13 @@ func (p *PageServer) deletePageHandler(w http.ResponseWriter, r *http.Request, i
 	_, _ = w.Write([]byte(fmt.Sprintf("page with id=%d has been deleted.", id)))
 }
 
-func (p *PageServer) getPageHandler(w http.ResponseWriter, r *http.Request, id int) {
+func (p *PageServer) getPageHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("handling get page at %s\n", r.URL.Path)
+	// Here and elsewhere, not checking error of Atoi because the router only
+	// matches the [0-9]+ regex.
+	id, _ := strconv.Atoi(mux.Vars(r)["id"])
 	ret, err := p.store.GetPage(id)
+
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return

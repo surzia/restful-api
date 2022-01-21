@@ -3,14 +3,22 @@ package main
 import (
 	"log"
 	"net/http"
+
+	"github.com/gorilla/mux"
 )
 
 func main() {
-	mux := http.NewServeMux()
+	router := mux.NewRouter()
+	router.StrictSlash(true)
 	server := NewPageServer()
-	mux.HandleFunc("/page/", server.pageHandler)
-	mux.HandleFunc("/tag/", server.tagHandler)
-	mux.HandleFunc("/due/", server.dueHandler)
+	router.HandleFunc("/page/", server.createPageHandler).Methods("POST")
+	router.HandleFunc("/page/", server.getAllPagesHandler).Methods("GET")
+	router.HandleFunc("/page/", server.deleteAllPagesHandler).Methods("DELETE")
+	router.HandleFunc("/page/", server.updatePageHandler).Methods("PUT")
+	router.HandleFunc("/page/{id:[0-9]+}/", server.getPageHandler).Methods("GET")
+	router.HandleFunc("/page/{id:[0-9]+}/", server.deletePageHandler).Methods("DELETE")
+	router.HandleFunc("/tag/", server.tagHandler).Methods("GET")
+	router.HandleFunc("/due/", server.dueHandler).Methods("GET")
 
-	log.Fatal(http.ListenAndServe("localhost:8880", mux))
+	log.Fatal(http.ListenAndServe("localhost:8880", router))
 }

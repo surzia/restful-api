@@ -19,4 +19,4 @@ go run main.go
 Then visit the printed link in a [browser](http://localhost:8880) for the GraphQL playground.
 
 ## Reference
-- [Juejin](https://juejin.cn/post/7052931619962748958)
+- [Juejin](https://juejin.cn/post/7056018992976101389)

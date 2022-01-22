@@ -22,4 +22,4 @@ go run main.go
 server runs in [localhost:8880](http://localhost:8880)
 
 ## Reference
-- [Juejin](https://juejin.cn/post/7052931619962748958)
+- [Juejin](https://juejin.cn/post/7055661218681323534)

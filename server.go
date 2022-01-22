@@ -2,9 +2,10 @@ package main
 
 import (
 	"net/http"
-	"restful-api/page"
 	"strconv"
 	"time"
+
+	"restful-api/page"
 
 	"github.com/gin-gonic/gin"
 )

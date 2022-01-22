@@ -2,42 +2,37 @@ package page
 
 import (
 	"fmt"
+	"restful-api/graph/model"
 	"sync"
 	"time"
 )
-
-type Page struct {
-	Id   int       `json:"id"`
-	Text string    `json:"text"`
-	Tags []string  `json:"tags"`
-	Due  time.Time `json:"due"`
-}
 
 // Store is a simple in-memory database of pages; Store methods are
 // safe to call concurrently.
 type Store struct {
 	sync.Mutex
 
-	pages  map[int]*Page
+	pages  map[int]*model.Page
 	nextId int
 }
 
 func New() *Store {
 	return &Store{
-		pages:  make(map[int]*Page),
+		pages:  make(map[int]*model.Page),
 		nextId: 0,
 	}
 }
 
 // CreatePage creates a new page in the store.
-func (s *Store) CreatePage(text string, tags []string, due time.Time) int {
+func (s *Store) CreatePage(text string, tags []string, due time.Time, attachments []*model.Attachment) int {
 	s.Lock()
 	defer s.Unlock()
 
-	page := &Page{
-		Id:   s.nextId,
-		Text: text,
-		Due:  due,
+	page := &model.Page{
+		ID:          s.nextId,
+		Text:        text,
+		Due:         due,
+		Attachments: attachments,
 	}
 
 	page.Tags = make([]string, len(tags))
@@ -46,7 +41,7 @@ func (s *Store) CreatePage(text string, tags []string, due time.Time) int {
 	s.pages[s.nextId] = page
 	s.nextId++
 
-	return page.Id
+	return page.ID
 }
 
 // DeletePage deletes the page with the given id. If no such id exists, an error
@@ -66,23 +61,23 @@ func (s *Store) DeletePage(id int) error {
 
 // UpdatePage updates the page with the given id and new page. If no such id
 // exists, an error is returned, else page with given id should be updated.
-func (s *Store) UpdatePage(page *Page) (*Page, error) {
+func (s *Store) UpdatePage(page *model.Page) (*model.Page, error) {
 	s.Lock()
 	defer s.Unlock()
 
-	_, ok := s.pages[page.Id]
-	s.pages[page.Id] = page
+	_, ok := s.pages[page.ID]
+	s.pages[page.ID] = page
 
 	if ok {
 		return page, nil
 	}
 
-	return nil, fmt.Errorf("page with id=%d not found", page.Id)
+	return nil, fmt.Errorf("page with id=%d not found", page.ID)
 }
 
 // GetPage retrieves a page from the store, by id. If no such id exists, an
 // error is returned.
-func (s *Store) GetPage(id int) (*Page, error) {
+func (s *Store) GetPage(id int) (*model.Page, error) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -95,11 +90,11 @@ func (s *Store) GetPage(id int) (*Page, error) {
 }
 
 // GetAllPages returns all the pages in the store, in arbitrary order.
-func (s *Store) GetAllPages() []*Page {
+func (s *Store) GetAllPages() []*model.Page {
 	s.Lock()
 	defer s.Unlock()
 
-	ret := make([]*Page, 0, len(s.pages))
+	ret := make([]*model.Page, 0, len(s.pages))
 	for _, page := range s.pages {
 		ret = append(ret, page)
 	}
@@ -111,17 +106,17 @@ func (s *Store) DeleteAllPages() error {
 	s.Lock()
 	defer s.Unlock()
 
-	s.pages = make(map[int]*Page)
+	s.pages = make(map[int]*model.Page)
 	return nil
 }
 
 // GetPagesByTag returns all the pages that have the given tag, in arbitrary
 // order.
-func (s *Store) GetPagesByTag(tag string) []*Page {
+func (s *Store) GetPagesByTag(tag string) []*model.Page {
 	s.Lock()
 	defer s.Unlock()
 
-	var ret []*Page
+	var ret []*model.Page
 
 search:
 	for _, page := range s.pages {
@@ -138,11 +133,11 @@ search:
 
 // GetPagesByDueDate returns all the pages that have the given due date, in
 // arbitrary order.
-func (s *Store) GetPagesByDueDate(year int, month time.Month, day int) []*Page {
+func (s *Store) GetPagesByDueDate(year int, month time.Month, day int) []*model.Page {
 	s.Lock()
 	defer s.Unlock()
 
-	var ret []*Page
+	var ret []*model.Page
 
 	for _, page := range s.pages {
 		y, m, d := page.Due.Date()

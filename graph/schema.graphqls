@@ -1,0 +1,43 @@
+type Query {
+    getAllPages: [Page]
+    getPage(id: ID!): Page
+
+    getPagesByTag(tag: String!): [Page]
+    getPagesByDue(due: Time!): [Page]
+}
+
+type Mutation {
+    createPage(input: NewPage!): Page!
+
+    deletePage(id: ID!): Boolean
+    deleteAllPages: Boolean
+}
+
+scalar Time
+
+type Attachment {
+    Name: String!
+    Date: Time!
+    Contents: String!
+}
+
+type Page {
+    Id: ID!
+    Text: String!
+    Tags: [String!]
+    Due: Time!
+    Attachments: [Attachment!]
+}
+
+input NewAttachment {
+    Name: String!
+    Date: Time!
+    Contents: String!
+}
+
+input NewPage {
+    Text: String!
+    Tags: [String!]
+    Due: Time!
+    Attachments: [NewAttachment!]
+}

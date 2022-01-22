@@ -1,24 +1,24 @@
 package main
 
 import (
+	"github.com/99designs/gqlgen/graphql/playground"
 	"log"
 	"net/http"
+	"restful-api/graph"
+	"restful-api/graph/generated"
 
-	"github.com/gorilla/mux"
+	"github.com/99designs/gqlgen/graphql/handler"
 )
 
-func main() {
-	router := mux.NewRouter()
-	router.StrictSlash(true)
-	server := NewPageServer()
-	router.HandleFunc("/page/", server.createPageHandler).Methods("POST")
-	router.HandleFunc("/page/", server.getAllPagesHandler).Methods("GET")
-	router.HandleFunc("/page/", server.deleteAllPagesHandler).Methods("DELETE")
-	router.HandleFunc("/page/", server.updatePageHandler).Methods("PUT")
-	router.HandleFunc("/page/{id:[0-9]+}/", server.getPageHandler).Methods("GET")
-	router.HandleFunc("/page/{id:[0-9]+}/", server.deletePageHandler).Methods("DELETE")
-	router.HandleFunc("/tag/", server.tagHandler).Methods("GET")
-	router.HandleFunc("/due/", server.dueHandler).Methods("GET")
+const port = "8880"
 
-	log.Fatal(http.ListenAndServe("localhost:8880", router))
+func main() {
+
+	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: graph.NewResolver()}))
+
+	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
+	http.Handle("/query", srv)
+
+	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }

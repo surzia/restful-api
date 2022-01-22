@@ -5,9 +5,10 @@ package graph
 
 import (
 	"context"
+	"time"
+
 	"restful-api/graph/generated"
 	"restful-api/graph/model"
-	"time"
 )
 
 func (r *mutationResolver) CreatePage(_ context.Context, input model.NewPage) (*model.Page, error) {

@@ -1,13 +1,14 @@
 package main
 
 import (
-	"github.com/99designs/gqlgen/graphql/playground"
 	"log"
 	"net/http"
+
 	"restful-api/graph"
 	"restful-api/graph/generated"
 
 	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/playground"
 )
 
 const port = "8880"

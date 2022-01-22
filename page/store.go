@@ -2,9 +2,10 @@ package page
 
 import (
 	"fmt"
-	"restful-api/graph/model"
 	"sync"
 	"time"
+
+	"restful-api/graph/model"
 )
 
 // Store is a simple in-memory database of pages; Store methods are

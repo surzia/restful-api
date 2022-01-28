@@ -2,6 +2,14 @@
 
 A RESTFul API implemented by Golang using graphql
 
+## Overview
+Here are the implementations of four different versions of the RESTFul API, corresponding to the four branches:
+
+- [graphql](https://github.com/surzia/restful-api)
+- [gin](https://github.com/surzia/restful-api/tree/gin)
+- [gorilla/mux](https://github.com/surzia/restful-api/tree/gorilla/mux)
+- [std-lib](https://github.com/surzia/restful-api/tree/std-lib)
+
 ## Get Start
 It uses [gqlgen](https://github.com/99designs/gqlgen) to generate the GraphQL model and bindings.
 
